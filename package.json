@@ -1,6 +1,6 @@
 {
   "name": "vanta",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "VANTA - control de integridad de carpetas de juegos",
   "main": "dist-electron/main.js",
@@ -66,5 +66,6 @@
       "provider": "github",
       "releaseType": "release"
     }
-  }
+  },
+  "repository": "github:Zoar87/vanta"
 }
