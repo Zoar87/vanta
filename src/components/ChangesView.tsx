@@ -303,6 +303,7 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
                               <th>Ruta</th>
                               <th>Estado</th>
                               <th className="num">Tamaño</th>
+                              <th>Modificado</th>
                               <th>Identidad</th>
                               <th />
                             </tr>
@@ -322,6 +323,9 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
                                   </span>
                                 </td>
                                 <td className="num">{e.size ? bytes(e.size) : '—'}</td>
+                                <td title={e.mtimeMs ? new Date(e.mtimeMs).toISOString() : ''}>
+                                  {e.mtimeMs ? dateTime(new Date(e.mtimeMs).toISOString()) : '—'}
+                                </td>
                                 <td title={e.pairedWith?.rel ?? e.identity}>
                                   {e.pairedWith
                                     ? e.pairedWith.kind === 'renombrado-desde'

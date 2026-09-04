@@ -132,6 +132,7 @@ function createWindow(): void {
     minHeight: 640,
     backgroundColor: '#0d1017',
     title: 'VANTA',
+    icon: path.join(__dirname, '..', 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

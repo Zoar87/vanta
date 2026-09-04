@@ -160,6 +160,13 @@ export const SIGNATURES: Signature[] = [
     versionInfo: /nvidia.*dlss|ngx/i
   },
   {
+    id: 'dlss-swapper',
+    name: 'DLSS Swapper',
+    category: 'herramienta',
+    paths: [/^_storage_\//, /^_backup_dlss\//, /^dlss[_-]swapper/],
+    versionInfo: /dlss swapper/i
+  },
+  {
     id: 'fsr3',
     name: 'FSR / generación de fotogramas',
     category: 'herramienta',
@@ -546,6 +553,7 @@ export async function classify(input: ClassifyInput): Promise<{
     for (const e of lote.entries) {
       const twin = e.sha256 ? byHash.get(e.sha256) : undefined
       if (!twin) continue
+      // se agrupa con el archivo del que es copia exacta
       e.groupId = twin.groupId
       e.identity = e.identity ?? `copia exacta de ${twin.rel}`
       buckets.get(twin.groupId)!.entries.push(e)

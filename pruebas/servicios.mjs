@@ -271,14 +271,15 @@ await writeFile(path.join(G, 're2_fw_config.txt'), 'FrameworkConfig...\n')
 await writeFile(path.join(G, 'reframework_accessed_files.txt'), '')
 await writeFile(path.join(G, 'ref_ui.ini'), '[ui]\n')
 await copyFile(path.join(G, 'Data/armas.pak'), path.join(G, '_storage_/armas.pak'))       // copia manual de algo nuevo
+await writeFile(path.join(G, '_storage_/nvngx_dlss.dll'), Buffer.alloc(300, 11))          // respaldo de DLSS Swapper
 
 title('Comparación con la línea base')
 const diff = await diffAgainstBaseline({ gameId: 'j', roots: [G], baseline, workerFile: WORKER, deep: false, ...quiet })
 const n = (s) => diff.entries.filter((e) => e.status === s).length
-ok(`15 nuevos (${n('nuevo')})`, n('nuevo') === 15)
+ok(`16 nuevos (${n('nuevo')})`, n('nuevo') === 16)
 ok(`3 modificados (${n('modificado')})`, n('modificado') === 3)
 ok(`2 desaparecidos (${n('desaparecido')})`, n('desaparecido') === 2)
-ok(`solo relee lo sospechoso: 18 (${diff.rehashed})`, diff.rehashed === 18)
+ok(`solo relee lo sospechoso: 19 (${diff.rehashed})`, diff.rehashed === 19)
 ok('empareja el renombrado por huella', diff.entries.find((e) => e.rel === 'Juego/Content/Paks/pakchunk0.pak.BAK')?.pairedWith?.kind === 'renombrado-desde')
 ok('empareja la copia del parcheador', diff.entries.find((e) => e.rel === 'DATA_SETTINGS.XML.BAK')?.pairedWith?.kind === 'copia-de')
 ok('el XML sobrescrito es recuperable desde su .BAK', diff.entries.find((e) => e.rel === 'DATA_SETTINGS.XML')?.recoverableFrom === 'DATA_SETTINGS.XML.BAK')
@@ -295,8 +296,8 @@ ok('la dxgi.dll que no es ReShade se marca como inyector', find('DLL proxy sin i
 ok('REFramework se reconoce por sus archivos característicos', find('REFramework')?.fileCount === 4)
 ok('y reclama la dinput8.dll sin datos de versión que tiene al lado', entries.find((e) => e.rel === 'dinput8.dll')?.groupId === 'firma:reframework')
 ok('la copia manual de un archivo nuevo no se confunde con un respaldo de original', entries.find((e) => e.rel === '_storage_/armas.pak')?.pairedWith == null)
-ok('y se agrupa con el archivo del que es copia exacta', entries.find((e) => e.rel === '_storage_/armas.pak')?.groupId === 'vortex:Armas HD')
-ok('cada mod de Vortex con su nombre real', find('Vortex · Armas HD')?.fileCount === 3)
+ok('la carpeta de respaldo se reconoce como DLSS Swapper', find('DLSS Swapper')?.fileCount === 2)
+ok('cada mod de Vortex con su nombre real', find('Vortex · Armas HD')?.fileCount === 2)
 ok('renombrados en su grupo bloqueado, original y .BAK juntos', find('Originales desactivados renombrando')?.fileCount === 2 && find('Originales desactivados renombrando')?.locked === true)
 ok('la copia del parcheador es purgable', find('Copias de seguridad de originales')?.locked === false)
 ok('lo desaparecido de verdad tiene su grupo', find('Originales que faltan')?.fileCount === 1)

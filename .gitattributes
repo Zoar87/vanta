@@ -1,0 +1,5 @@
+# Los saltos de línea se normalizan al guardar y no se tocan al sacar.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ico binary
+*.png binary

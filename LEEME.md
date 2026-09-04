@@ -230,7 +230,8 @@ cualquiera si te equivocaste al nombrar un grupo.
 
 ReShade, ENBSeries, SweetFX, DXVK, VKD3D, dgVoodoo, Special K, Ultimate ASI
 Loader, script extenders (SKSE, F4SE, NVSE, SFSE), BepInEx, MelonLoader,
-RED4ext, REFramework, sustituciones de DLSS, FSR y OptiScaler, Vortex, Mod
+RED4ext, REFramework, DLSS Swapper y sus carpetas de respaldo,
+sustituciones de DLSS, FSR y OptiScaler, Vortex, Mod
 Organizer 2, plugins de Bethesda, paks de Unreal, RenderDoc, entrenadores y
 registros de volcado.
 
@@ -313,6 +314,12 @@ la app, que es peor idea. No hay nada en el código que no puedas enseñar.
 
 Windows SmartScreen avisará la primera vez que ejecutes el instalador porque
 no está firmado. «Más información» y «Ejecutar de todas formas».
+
+Nota sobre npm: las versiones nuevas ya no ejecutan los scripts de instalación
+de los paquetes sin permiso, y el binario de Electron se descarga en uno de
+ellos. `INSTALAR.bat` lo autoriza y comprueba que esté; si no lo consigue, te
+dice el comando exacto. `PUBLICAR.bat` no depende de eso: el compilador del
+instalador descarga su propia copia de Electron.
 
 ## Pendiente
 

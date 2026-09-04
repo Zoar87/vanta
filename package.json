@@ -1,6 +1,6 @@
 {
   "name": "vanta",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "VANTA - control de integridad de carpetas de juegos",
   "main": "dist-electron/main.js",
@@ -42,6 +42,7 @@
     "files": [
       "dist/**",
       "dist-electron/**",
+      "build/icon.*",
       "package.json"
     ],
     "win": {
@@ -54,14 +55,17 @@
         }
       ],
       "artifactName": "VANTA-Setup-${version}.${ext}",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "VANTA",
-      "language": "3082"
+      "language": "3082",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "publish": {
       "provider": "github",

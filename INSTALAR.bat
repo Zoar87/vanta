@@ -35,6 +35,25 @@ if errorlevel 1 (
   exit /b 1
 )
 
+:: npm 12 no ejecuta los scripts de instalacion sin permiso explicito, y sin
+:: ellos no se descarga el binario de Electron. Se pide y se comprueba.
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo.
+  echo   Autorizando la descarga de Electron...
+  call npm approve-scripts electron >nul 2>nul
+  call npm rebuild electron >nul 2>nul
+)
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo.
+  echo   [!] No se ha descargado el motor de Electron.
+  echo       Ejecuta en esta carpeta:  npm approve-scripts --allow-scripts-pending
+  echo       y autoriza electron. Despues vuelve a ejecutar INSTALAR.bat
+  echo.
+  echo       ^(Publicar con PUBLICAR.bat funciona igualmente: descarga su copia.^)
+  echo.
+  pause
+)
+
 echo.
 echo   Compilando la aplicacion...
 echo.
