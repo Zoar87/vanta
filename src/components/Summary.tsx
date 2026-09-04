@@ -36,6 +36,18 @@ export default function Summary({
   const [registry, setRegistry] = useState<{ root: number; rel: string } | null>(null)
 
   useEffect(() => {
+    setNota(game.note ?? '')
+    setNotaGuardada(false)
+  }, [game.id])
+
+  const guardarNota = async () => {
+    await window.vanta.setNote(game.id, nota)
+    setGames(await window.vanta.listGames())
+    setNotaGuardada(true)
+    setTimeout(() => setNotaGuardada(false), 2500)
+  }
+
+  useEffect(() => {
     setSample(null)
     setSuggestions(null)
     setOriginals(null)
@@ -83,6 +95,8 @@ export default function Summary({
   }
 
   const [artNote, setArtNote] = useState<string | null>(null)
+  const [nota, setNota] = useState(game.note ?? '')
+  const [notaGuardada, setNotaGuardada] = useState(false)
 
   const refreshArt = async () => {
     setArtBusy(true)
@@ -304,6 +318,28 @@ export default function Summary({
         </section>
         )
       })()}
+
+      <section className="section">
+        <h3>Tus notas</h3>
+        <p className="note" style={{ marginTop: 0 }}>
+          Lo que quieras acordarte dentro de tres meses: cómo instalaste algo, qué hay que repetir
+          tras cada parche, qué preajuste te gustaba.
+        </p>
+        <textarea
+          className="nota"
+          value={nota}
+          rows={4}
+          placeholder="Para que el HDR funcione hay que activarlo también en Windows. REFramework hay que actualizarlo a mano cada parche…"
+          onChange={(e) => setNota(e.target.value)}
+          onBlur={guardarNota}
+        />
+        <div className="group-actions" style={{ marginTop: 8 }}>
+          <button className="btn" onClick={guardarNota} disabled={nota === (game.note ?? '')}>
+            Guardar
+          </button>
+          {notaGuardada && <span className="note">Guardada.</span>}
+        </div>
+      </section>
 
       <section className="section">
         <h3>Carpetas externas</h3>

@@ -212,6 +212,58 @@ El botón de la barra superior abre dónde guarda VANTA sus cosas, cuánto ocupa
 cada parte y la lista de reglas que le has enseñado, con la opción de olvidar
 cualquiera si te equivocaste al nombrar un grupo.
 
+## Por cuándo apareció
+
+En la pestaña de cambios puedes ver lo aparecido de dos maneras: por lo que es,
+que es la de siempre, o **por cuándo apareció**. Esta segunda agrupa los
+archivos por su fecha, juntando los que se crearon con pocos minutos de
+diferencia.
+
+Sirve para responder a «¿y esto de dónde ha salido?». Lo que aparece junto vino
+junto, así que una lista de cien archivos sueltos se convierte en tres momentos:
+a tal hora instalaste esto, a tal otra esto.
+
+## Aviso cuando la tienda actualiza un juego
+
+Al abrir, VANTA compara la compilación que Steam tiene ahora de cada juego con
+la que había cuando fijaste su línea base. Si alguna ha cambiado, te avisa
+arriba. Es el momento importante: un parche reescribe archivos que aparecerán
+como cambios ajenos, y además suele romper los cargadores de mods.
+
+## Lo que tienes en varios juegos
+
+El botón «En varios juegos» de la barra superior cruza por huella lo que has
+añadido en cada uno. Te dice dónde más tienes puesta esa DLL de ReShade, y
+sobre todo si en algún juego te quedó una versión distinta de la que usas en
+los demás.
+
+Solo cruza lo añadido, nunca los originales ni las partidas guardadas.
+
+## Freno de mano con los anticheat
+
+Si un juego lleva Easy Anti-Cheat o BattlEye, la pestaña de perfiles lo avisa
+en rojo. Y si intentas lanzarlo con algo montado, no basta con cerrar un aviso:
+hay que escribir «jugar igualmente» para continuar. También ofrece desmontar
+todo y jugar limpio en el mismo diálogo.
+
+## Ficha de un archivo
+
+Cualquier archivo de la lista de cambios tiene un botón de **Ficha**. Enseña
+tamaño, fechas de creación y modificación, huella, a qué grupo pertenece y,
+si es un binario, lo que dice de sí mismo: quién lo firma, qué versión es, con
+qué enlaza y cómo se llamaba originalmente. Si el nombre no coincide con el
+original avisa, que es lo típico de un cargador que suplanta a una DLL del
+sistema.
+
+De un archivo de texto enseña las primeras líneas, para no tener que abrirlo
+fuera.
+
+## Tus notas
+
+Cada juego tiene un cuaderno en la pestaña de resumen. Para lo que quieras
+acordarte dentro de tres meses: qué hay que repetir tras cada parche, qué
+preajuste te gustaba, qué había que activar también en Windows.
+
 ## Qué protege VANTA pase lo que pase
 
 - **Partidas guardadas.** Detectadas por carpeta y por extensión, salen con

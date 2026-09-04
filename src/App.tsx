@@ -9,7 +9,9 @@ import Library from './components/Library'
 import GameView from './components/GameView'
 import DetectDialog from './components/DetectDialog'
 import Settings from './components/Settings'
-import { useStore, type DetectedGame } from './store'
+import SharedView from './components/SharedView'
+import { useStore, count, type DetectedGame } from './store'
+import type { UpdateAlert } from '../shared/types'
 
 interface AppInfo {
   version: string
@@ -22,11 +24,17 @@ export default function App() {
   const { games, selectedId, ready, load, setGames, setProgress, lastError, setError } = useStore()
   const [detecting, setDetecting] = useState(false)
   const [settings, setSettings] = useState(false)
+  const [updates, setUpdates] = useState<UpdateAlert[]>([])
+  const [updatesOff, setUpdatesOff] = useState(false)
+  const [shared, setShared] = useState(false)
   const [info, setInfo] = useState<AppInfo | null>(null)
 
   useEffect(() => {
     load()
     window.vanta.info().then(setInfo)
+    // Steam puede haber parcheado un juego desde la última vez. Enterarse antes
+    // de jugar evita confundir los archivos del parche con mods ajenos.
+    window.vanta.pendingUpdates().then(setUpdates)
     const offProgress = window.vanta.onScanProgress(setProgress)
     const offLibrary = window.vanta.onLibraryChanged(setGames)
     return () => {
@@ -58,6 +66,13 @@ export default function App() {
             v{info.version} · Electron {info.electron}
           </span>
         )}
+        <button
+          className="btn quiet"
+          onClick={() => setShared(true)}
+          title="Archivos que tienes puestos en más de un juego"
+        >
+          En varios juegos
+        </button>
         <button className="btn quiet" onClick={() => setSettings(true)} title="Ajustes">
           Ajustes
         </button>
@@ -66,6 +81,21 @@ export default function App() {
       <Library onDetect={() => setDetecting(true)} onAddFolder={addFolder} />
 
       <main className="main">
+        {updates.length > 0 && !updatesOff && (
+          <div className="warn" style={{ margin: '18px 28px 0', borderLeftColor: 'var(--c-loader)' }}>
+            <strong>
+              {updates.length === 1
+                ? 'Steam ha actualizado un juego.'
+                : `Steam ha actualizado ${count(updates.length)} juegos.`}
+            </strong>{' '}
+            {updates.map((u) => u.gameName).join(', ')}. Los archivos del parche aparecerán como
+            cambios ajenos hasta que rehagas su línea base.
+            <button className="btn quiet" onClick={() => setUpdatesOff(true)} style={{ marginLeft: 10 }}>
+              Entendido
+            </button>
+          </div>
+        )}
+
         {lastError && (
           <div className="warn" style={{ margin: '18px 28px 0' }}>
             <strong>No se pudo completar.</strong> {lastError}{' '}
@@ -93,6 +123,7 @@ export default function App() {
         )}
       </main>
 
+      {shared && <SharedView onClose={() => setShared(false)} />}
       {settings && <Settings onClose={() => setSettings(false)} />}
       {detecting && <DetectDialog onClose={() => setDetecting(false)} onAdd={addDetected} />}
     </div>

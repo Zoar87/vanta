@@ -9,7 +9,8 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
-  Category, ChangeReport, Conflict, ConfigVersion, Game, GameHistory, LinkedPath,
+  Category, ChangeReport, Conflict, ConfigVersion, FileReport, Game, GameHistory, LinkedPath,
+  SharedFile, TimeCluster, UpdateAlert,
   Profile, QuarantineBatch, LearnedRule, ScanProgress
 } from '../shared/types'
 
@@ -26,6 +27,13 @@ const api = {
   removePreview: (id: string) => ipcRenderer.invoke('library:removePreview', id),
   usage: () => ipcRenderer.invoke('app:usage'),
   openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+  timeline: (id: string): Promise<TimeCluster[]> => ipcRenderer.invoke('changes:timeline', id),
+  pendingUpdates: (): Promise<UpdateAlert[]> => ipcRenderer.invoke('library:updates'),
+  sharedFiles: (): Promise<SharedFile[]> => ipcRenderer.invoke('library:shared'),
+  inspectFile: (id: string, root: number, rel: string): Promise<FileReport | null> =>
+    ipcRenderer.invoke('file:inspect', id, root, rel),
+  setNote: (id: string, note: string) => ipcRenderer.invoke('game:note', id, note),
+
   updateState: () => ipcRenderer.invoke('update:state'),
   checkUpdates: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

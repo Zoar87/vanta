@@ -22,6 +22,12 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
   const [returnClean, setReturnClean] = useState(true)
   const [editing, setEditing] = useState<Profile | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null)
+  const [riesgo, setRiesgo] = useState<{
+    mode: 'limpio' | 'tal cual' | 'perfil'
+    profileId: string | null
+    montado: string[]
+  } | null>(null)
+  const [escrito, setEscrito] = useState('')
 
   const refresh = () => window.vanta.listProfiles(game.id).then(setProfiles)
 
@@ -51,7 +57,29 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
     }
   }
 
+  const anticheat = game.spec?.antiCheat ?? []
+
+  /**
+   * Antes de lanzar comprueba si va a quedar algo montado en un juego con
+   * anticheat. Ahí no vale un aviso que se cierra sin leer: hay que escribirlo.
+   */
+  const pedirJugar = (mode: 'limpio' | 'tal cual' | 'perfil', profileId: string | null) => {
+    const quedaran =
+      mode === 'limpio'
+        ? []
+        : mode === 'perfil'
+          ? (profiles ?? []).filter((p) => p.id === profileId).map((p) => p.name)
+          : (profiles ?? []).filter((p) => p.mounted).map((p) => p.name)
+    if (anticheat.length && quedaran.length) {
+      setEscrito('')
+      setRiesgo({ mode, profileId, montado: quedaran })
+      return
+    }
+    play(mode, profileId)
+  }
+
   const play = async (mode: 'limpio' | 'tal cual' | 'perfil', profileId: string | null) => {
+    setRiesgo(null)
     onBusy(true)
     const res = await window.vanta.launch(game.id, mode, profileId, returnClean)
     onBusy(false)
@@ -95,13 +123,21 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
 
   return (
     <>
+      {anticheat.length > 0 && (
+        <div className="warn">
+          <strong>Este juego lleva {anticheat.map((a) => a.name).join(' y ')}.</strong> Jugar en
+          línea con archivos modificados puede costarte una sanción o el cierre de la cuenta. Para
+          jugar en línea, usa «Jugar limpio».
+        </div>
+      )}
+
       <div className="play">
         <div className="play-row">
-          <button className="btn primary" onClick={() => play('tal cual', null)} disabled={busy}>
+          <button className="btn primary" onClick={() => pedirJugar('tal cual', null)} disabled={busy}>
             Jugar tal como está
           </button>
           {hasProfiles && (
-            <button className="btn" onClick={() => play('limpio', null)} disabled={busy}>
+            <button className="btn" onClick={() => pedirJugar('limpio', null)} disabled={busy}>
               Jugar limpio
             </button>
           )}
@@ -109,7 +145,7 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
             <button
               key={p.id}
               className="btn"
-              onClick={() => play('perfil', p.id)}
+              onClick={() => pedirJugar('perfil', p.id)}
               disabled={busy}
               style={{ borderColor: p.color }}
             >
@@ -183,6 +219,58 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
           ))
         )}
       </section>
+
+      {riesgo && (
+        <div className="overlay" onClick={() => setRiesgo(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <header>
+              <h2>Vas a jugar con {anticheat.map((a) => a.name).join(' y ')} y mods puestos</h2>
+            </header>
+            <div className="scroll" style={{ padding: '12px 20px' }}>
+              <p style={{ marginTop: 0 }}>
+                Quedará montado: <strong>{riesgo.montado.join(', ')}</strong>.
+              </p>
+              <p>
+                Un anticheat comprueba que los archivos del juego sean los originales. Si detecta
+                los mods, la sanción no la levanta nadie y puedes perder la cuenta entera, no solo
+                el juego.
+              </p>
+              <p className="note">
+                Si es una partida a solas y sin conexión, normalmente no pasa nada. Si vas a jugar
+                en línea, cancela y usa «Jugar limpio».
+              </p>
+              <label className="field">
+                <span>Para continuar, escribe: jugar igualmente</span>
+                <input
+                  type="text"
+                  value={escrito}
+                  autoFocus
+                  onChange={(e) => setEscrito(e.target.value)}
+                  placeholder="jugar igualmente"
+                />
+              </label>
+            </div>
+            <footer>
+              <button className="btn primary" onClick={() => setRiesgo(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn quiet"
+                onClick={() => play('limpio', null)}
+              >
+                Desmontar todo y jugar limpio
+              </button>
+              <button
+                className="btn quiet danger"
+                disabled={escrito.trim().toLowerCase() !== 'jugar igualmente'}
+                onClick={() => play(riesgo.mode, riesgo.profileId)}
+              >
+                Jugar igualmente
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <EditProfile

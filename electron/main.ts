@@ -38,6 +38,7 @@ import type {
   ChangeReport,
   Game,
   LearnedRule,
+  UpdateAlert,
   Profile,
   QuarantineBatch,
   RevisionSummary,
@@ -90,6 +91,8 @@ import {
   REGISTRY_PREFIX
 } from './services/registry'
 import { checkForUpdates, installUpdate, currentUpdateState, onUpdateState } from './services/updater'
+import { clusterByTime } from './services/timeline'
+import { crossReference, inspectFile } from './services/inspect'
 
 // =============================================================================
 // 1. Arranque y ventana
@@ -1166,6 +1169,60 @@ ipcMain.handle('app:openDataDir', async () => {
 // =============================================================================
 // Ciclo de vida
 // =============================================================================
+
+// =============================================================================
+// 8b. Línea de tiempo, cruce entre juegos, ficha de archivo y notas
+// =============================================================================
+
+/** Agrupa lo aparecido por el momento en que se creó cada archivo. */
+ipcMain.handle('changes:timeline', async (_e, id: string) => {
+  const report = await loadReport(id)
+  return report ? clusterByTime(report.entries, report.groups) : []
+})
+
+/** Juegos cuya compilación en la tienda ya no coincide con su línea base. */
+ipcMain.handle('library:updates', async () => {
+  const alerts: UpdateAlert[] = []
+  for (const game of library) {
+    if (game.platform !== 'steam' || !game.baseline?.buildId) continue
+    const now = await currentBuildId(game)
+    if (now && now !== game.baseline.buildId) {
+      alerts.push({
+        gameId: game.id,
+        gameName: game.name,
+        from: game.baseline.buildId,
+        to: now
+      })
+    }
+  }
+  return alerts
+})
+
+/** El mismo archivo, por huella, presente en más de un juego. */
+ipcMain.handle('library:shared', async () => {
+  const reports = new Map<string, ChangeReport>()
+  for (const game of library) {
+    const report = await loadReport(game.id)
+    if (report) reports.set(game.id, report)
+  }
+  return crossReference({ games: library, reports })
+})
+
+/** Ficha completa de un archivo concreto. */
+ipcMain.handle('file:inspect', async (_e, id: string, root: number, rel: string) => {
+  const game = gameById(id)
+  if (!game) return null
+  return inspectFile(rootsOf(game), root, rel, await loadReport(id))
+})
+
+/** Cuaderno de notas del juego. */
+ipcMain.handle('game:note', async (_e, id: string, note: string) => {
+  const game = gameById(id)
+  if (!game) return null
+  game.note = note.trim() || undefined
+  await persist()
+  return game.note
+})
 
 // =============================================================================
 // 9. Actualización automática

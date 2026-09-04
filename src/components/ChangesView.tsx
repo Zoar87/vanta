@@ -12,6 +12,8 @@ import type { Category, ChangeReport, Conflict, FileGroup, Game } from '../../sh
 import { CATEGORY, CATEGORY_ORDER } from '../categories'
 import { bytes, count, dateTime, duration } from '../store'
 import ConfigDiffView from './ConfigDiffView'
+import FileInspector from './FileInspector'
+import type { TimeCluster } from '../../shared/types'
 
 interface Props {
   game: Game
@@ -37,6 +39,9 @@ interface Plan {
 export default function ChangesView({ game, busy, report, onReport, onBusy, onNotice }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState('')
+  const [vista, setVista] = useState<'grupos' | 'momentos'>('grupos')
+  const [momentos, setMomentos] = useState<TimeCluster[] | null>(null)
+  const [inspeccionar, setInspeccionar] = useState<{ root: number; rel: string } | null>(null)
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   const [saving, setSaving] = useState<FileGroup | null>(null)
   const [inspect, setInspect] = useState<{ root: number; rel: string } | null>(null)
@@ -49,6 +54,10 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
   }, [])
 
   // Los conflictos se recalculan con cada revisión nueva y tras cada purga.
+  useEffect(() => {
+    if (vista === 'momentos' && report) window.vanta.timeline(game.id).then(setMomentos)
+  }, [vista, game.id, report?.takenAt])
+
   useEffect(() => {
     if (report) window.vanta.listConflicts(game.id).then(setConflicts)
     else setConflicts([])
@@ -194,6 +203,29 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
           )}
 
           {report.entries.length > 0 && (
+            <div className="vista">
+              <button
+                className="tab"
+                aria-selected={vista === 'grupos'}
+                onClick={() => setVista('grupos')}
+              >
+                Por lo que es
+              </button>
+              <button
+                className="tab"
+                aria-selected={vista === 'momentos'}
+                onClick={() => setVista('momentos')}
+              >
+                Por cuándo apareció
+              </button>
+            </div>
+          )}
+
+          {vista === 'momentos' && (
+            <Momentos clusters={momentos} />
+          )}
+
+          {vista === 'grupos' && report.entries.length > 0 && (
             <input
               className="changes-filter"
               placeholder="Filtrar por ruta"
@@ -207,7 +239,7 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
             <p className="note">
               La carpeta está exactamente como la dejaste. Ni un archivo de diferencia.
             </p>
-          ) : (
+          ) : vista === 'momentos' ? null : (
             report.groups
               .slice()
               .sort(
@@ -342,13 +374,21 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
                                             : 'sin copia del original'
                                         : ''))}
                                 </td>
-                                <td>
+                                <td className="acciones">
                                   {CONFIG_EXT.test(e.rel) && e.status !== 'desaparecido' && (
                                     <button
                                       className="btn quiet"
                                       onClick={() => setInspect({ root: e.root, rel: e.rel })}
                                     >
                                       Ver qué cambió
+                                    </button>
+                                  )}
+                                  {e.status !== 'desaparecido' && (
+                                    <button
+                                      className="btn quiet"
+                                      onClick={() => setInspeccionar({ root: e.root, rel: e.rel })}
+                                    >
+                                      Ficha
                                     </button>
                                   )}
                                 </td>
@@ -390,6 +430,15 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
           onClose={() => setInspect(null)}
           onNotice={onNotice}
           onReverted={() => onReport(null)}
+        />
+      )}
+
+      {inspeccionar && (
+        <FileInspector
+          gameId={game.id}
+          root={inspeccionar.root}
+          rel={inspeccionar.rel}
+          onClose={() => setInspeccionar(null)}
         />
       )}
 
@@ -650,5 +699,48 @@ function SaveProfile({
         </footer>
       </div>
     </div>
+  )
+}
+
+/** Lo aparecido, agrupado por el momento en que se creó cada archivo. */
+function Momentos({ clusters }: { clusters: TimeCluster[] | null }) {
+  if (!clusters) return <p className="note">Ordenando por fecha…</p>
+  if (!clusters.length) {
+    return (
+      <p className="note">
+        No hay fechas con las que ordenar. Esto pasa cuando lo único que cambió son archivos que ya
+        existían.
+      </p>
+    )
+  }
+  return (
+    <>
+      <p className="note" style={{ marginTop: 0 }}>
+        Los archivos que aparecen juntos suelen venir de la misma acción. Cada bloque es un momento
+        en que instalaste o ejecutaste algo.
+      </p>
+      <ol className="momentos">
+        {clusters.map((c) => (
+          <li key={c.at}>
+            <div className="cuando">
+              {dateTime(c.at)}
+              {c.spanMinutes > 0 && <span className="note"> · durante {c.spanMinutes} min</span>}
+            </div>
+            <div className="que">
+              <strong>{count(c.fileCount)} archivos</strong> · {bytes(c.totalBytes)} ·{' '}
+              {c.groups.join(', ')}
+            </div>
+            <ul className="evidence">
+              {c.sample.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+              {c.fileCount > c.sample.length && (
+                <li className="note">y {count(c.fileCount - c.sample.length)} más</li>
+              )}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </>
   )
 }

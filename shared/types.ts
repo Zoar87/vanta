@@ -73,6 +73,8 @@ export interface Game {
   art?: GameArt
   /** Clave del registro donde el juego guarda sus ajustes, si los guarda ahí. */
   registryKey?: string
+  /** Cuaderno del juego: lo que quieras acordarte dentro de tres meses. */
+  note?: string
 }
 
 export interface GameArt {
@@ -313,4 +315,53 @@ export interface ConfigVersion {
   sha256: string
   file: string
   factory?: boolean
+}
+
+// ====================================================== ideas del bloque 4
+
+/** Un puñado de archivos que aparecieron a la vez: casi siempre, una acción tuya. */
+export interface TimeCluster {
+  at: string
+  fileCount: number
+  totalBytes: number
+  /** Nombres de los grupos a los que pertenecen esos archivos. */
+  groups: string[]
+  sample: string[]
+  spanMinutes: number
+}
+
+/** Un juego cuya compilación en la tienda ya no es la de su línea base. */
+export interface UpdateAlert {
+  gameId: string
+  gameName: string
+  from?: string
+  to?: string
+}
+
+/** El mismo archivo, por huella, presente en más de un juego. */
+export interface SharedFile {
+  rel: string
+  sha256: string
+  size: number
+  places: { gameId: string; gameName: string; rel: string; group?: string }[]
+  /** Otras versiones del mismo nombre de archivo con huella distinta. */
+  variants: { gameId: string; gameName: string; rel: string; sha256: string; size: number }[]
+}
+
+/** Todo lo que se puede saber de un archivo sin abrirlo en otro programa. */
+export interface FileReport {
+  rel: string
+  abs: string
+  exists: boolean
+  size: number
+  created?: string
+  modified?: string
+  sha256?: string
+  baselineSha256?: string
+  status?: ChangeStatus
+  group?: string
+  pe?: PeInfo
+  /** Primeras líneas, si es texto legible. */
+  preview?: string
+  isText: boolean
 }

@@ -36,7 +36,8 @@ await mkdir(OUT, { recursive: true })
 
 const services = [
   'scan', 'diff', 'classify', 'quarantine', 'originals', 'profiles', 'vortex',
-  'report', 'config', 'configStore', 'registry', 'art', 'pe', 'detect', 'spec', 'hashWorker'
+  'report', 'config', 'configStore', 'registry', 'art', 'pe', 'detect', 'spec',
+  'timeline', 'inspect', 'hashWorker'
 ]
 await build({
   entryPoints: services.map((s) => path.join(ROOT, 'electron', 'services', `${s}.ts`)),
@@ -72,6 +73,8 @@ const { resolveArt } = await load('art')
 const { readPe, readIcon } = await load('pe')
 const { parseVdf } = await load('detect')
 const { buildSpec } = await load('spec')
+const { clusterByTime } = await load('timeline')
+const { crossReference, inspectFile } = await load('inspect')
 
 const WORKER = path.join(OUT, 'hashWorker.js')
 const DATA = path.join(TMP, 'datos')
@@ -382,6 +385,64 @@ const reg = REGISTRY_PREFIX + 'HKCU\\Software\\X\\Y'
 await captureConfigs(DATA, 'j', [G], [{ root: 0, rel: reg, content: '[(raíz)]\nfov=70\n' }])
 await captureConfigs(DATA, 'j', [G], [{ root: 0, rel: reg, content: '[(raíz)]\nfov=103\n' }])
 ok('el registro se archiva como una configuración más', isRegistryConfig(reg) && (await loadConfigIndex(DATA, 'j')).find((f) => f.rel === reg)?.versions.length === 2)
+
+title('Línea de tiempo')
+// Fechas fabricadas: tres tandas separadas, como tres instalaciones distintas.
+const conFechas = entries.map((e) => ({ ...e }))
+const T = Date.parse('2026-09-03T23:00:00Z')
+for (const e of conFechas) {
+  if (e.status === 'desaparecido') continue
+  if (e.rel.startsWith('reshade') || e.rel === 'ReShade.ini' || e.rel === 'Romulus.ini') e.mtimeMs = T
+  else if (e.rel === 'dinput8.dll' || e.rel.startsWith('re2_') || e.rel.startsWith('ref') ) e.mtimeMs = T + 21 * 60000
+  else e.mtimeMs = T + 40 * 60000
+}
+const momentos = clusterByTime(conFechas, groups)
+ok(`separa las tandas en 3 momentos (${momentos.length})`, momentos.length === 3)
+ok('el más reciente va primero', momentos[0].at > momentos[2].at)
+ok('cada momento dice de qué grupos es', momentos.every((m) => m.groups.length > 0))
+ok('el momento de ReShade agrupa sus archivos',
+   momentos[2].groups.includes('ReShade') && momentos[2].fileCount >= 3)
+ok('los desaparecidos no entran, porque no tienen fecha',
+   momentos.reduce((n, m) => n + m.fileCount, 0) === conFechas.filter((e) => e.status !== 'desaparecido').length)
+ok('sin fechas devuelve una lista vacía en vez de romper',
+   clusterByTime(entries.map((e) => ({ ...e, mtimeMs: 0 })), groups).length === 0)
+
+title('El mismo archivo en varios juegos')
+const informeA = { gameId: 'a', takenAt: '', durationMs: 0, deep: false, baselineTakenAt: '', rehashed: 0,
+  groups: [{ id: 'g1', name: 'ReShade', category: 'postproceso', kind: 'firma', fileCount: 2, totalBytes: 0, counts: { nuevo: 2, modificado: 0, desaparecido: 0 }, locked: false }],
+  entries: [
+    { rel: 'dxgi.dll', root: 0, status: 'nuevo', size: 100, mtimeMs: 1, sha256: 'AAA', groupId: 'g1' },
+    { rel: 'guardado.sav', root: 0, status: 'nuevo', size: 10, mtimeMs: 1, sha256: 'SSS', groupId: 'gp' }
+  ] }
+const informeB = { ...informeA, gameId: 'b',
+  groups: [{ ...informeA.groups[0], id: 'g1', name: 'ReShade' }, { id: 'gp', name: 'Partidas', category: 'partida', kind: 'firma', fileCount: 1, totalBytes: 0, counts: { nuevo: 1, modificado: 0, desaparecido: 0 }, locked: true }],
+  entries: [
+    { rel: 'dxgi.dll', root: 0, status: 'nuevo', size: 90, mtimeMs: 1, sha256: 'BBB', groupId: 'g1' },
+    { rel: 'guardado.sav', root: 0, status: 'nuevo', size: 10, mtimeMs: 1, sha256: 'SSS', groupId: 'gp' }
+  ] }
+const informeC = { ...informeA, gameId: 'c', entries: [{ rel: 'dxgi.dll', root: 0, status: 'nuevo', size: 100, mtimeMs: 1, sha256: 'AAA', groupId: 'g1' }] }
+const cruce = crossReference({
+  games: [{ id: 'a', name: 'Juego A' }, { id: 'b', name: 'Juego B' }, { id: 'c', name: 'Juego C' }],
+  reports: new Map([['a', informeA], ['b', informeB], ['c', informeC]])
+})
+ok(`encuentra un archivo repetido (${cruce.length})`, cruce.length === 1 && cruce[0].rel === 'dxgi.dll')
+ok('agrupa los dos juegos con la misma versión', cruce[0].places.length === 2)
+ok('y señala el que tiene otra versión',
+   cruce[0].variants.length === 1 && cruce[0].variants[0].gameName === 'Juego B')
+ok('las partidas guardadas no se cruzan aunque coincidan', !cruce.some((f) => f.rel === 'guardado.sav'))
+
+title('Ficha de un archivo')
+const fichaDll = await inspectFile([G], 0, 'dinput8.dll', report)
+ok('mide el archivo y lee su fecha', fichaDll.exists && fichaDll.size > 0 && !!fichaDll.modified)
+ok('lee la cabecera del binario', fichaDll.pe?.arch === 'x64')
+ok('calcula la huella si no venía de la revisión', /^[0-9a-f]{64}$/.test(fichaDll.sha256 ?? ''))
+const fichaIni = await inspectFile([G], 0, 'ReShade.ini', report)
+ok('de un texto enseña las primeras líneas', fichaIni.isText && fichaIni.preview?.includes('[GENERAL]'))
+ok('dice a qué grupo pertenece', fichaIni.group === 'ReShade')
+const fichaNo = await inspectFile([G], 0, 'no-existe.dll', report)
+ok('un archivo que no está no rompe nada', fichaNo.exists === false)
+const fichaPak = await inspectFile([G], 0, 'Data/armas.pak', report)
+ok('un binario que no es PE no se enseña como texto', !fichaPak.isText && !fichaPak.pe)
 
 title('Carátulas')
 const STEAM = path.join(TMP, 'Steam')
