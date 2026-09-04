@@ -293,8 +293,13 @@ winget install --id GitHub.cli -e
 
 Después, doble clic en **PUBLICAR.bat**. La primera vez abre el navegador para
 iniciar sesión en GitHub y crea el repositorio `vanta` en tu cuenta. Cada vez
-pregunta el número de versión nueva, sube el código, compila el instalador y
-publica la release. Al terminar tienes `dist-installer\VANTA-Setup-x.y.z.exe`.
+pregunta el número de versión, instala lo que falte, sube el código, compila
+el instalador y publica la release. Al terminar tienes
+`dist-installer\VANTA-Setup-x.y.z.exe`.
+
+Todo lo que pasa queda en `publicar.log`. Si algo falla, ese archivo es lo que
+hay que mirar. El script aguanta ejecuciones a medias: si una vez falló tras
+crear el repositorio, la siguiente lo detecta y sigue desde ahí.
 
 Instala ese `.exe` una vez. A partir de ahí, la app instalada comprueba al
 arrancar si hay una versión más nueva en tus releases, la descarga en segundo

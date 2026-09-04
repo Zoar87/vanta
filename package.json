@@ -1,6 +1,6 @@
 {
   "name": "vanta",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "VANTA - control de integridad de carpetas de juegos",
   "main": "dist-electron/main.js",
@@ -53,7 +53,8 @@
           ]
         }
       ],
-      "artifactName": "VANTA-Setup-${version}.${ext}"
+      "artifactName": "VANTA-Setup-${version}.${ext}",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

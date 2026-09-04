@@ -530,6 +530,31 @@ export async function classify(input: ClassifyInput): Promise<{
     if (!orphanProxies.entries.length) buckets.delete('proxy-dll')
   }
 
+  // Un archivo desconocido que es copia exacta de otro ya identificado
+  // pertenece al mismo sitio: la carpeta _storage_ de Pragmata tenía una copia
+  // de la dinput8.dll de REFramework, y VANTA la dejaba sin identificar.
+  const lote = buckets.get('lote')
+  if (lote) {
+    const byHash = new Map<string, { groupId: string; rel: string }>()
+    for (const [id, b] of buckets) {
+      if (id === 'lote' || b.locked) continue
+      for (const e of b.entries) {
+        if (e.sha256 && !byHash.has(e.sha256)) byHash.set(e.sha256, { groupId: id, rel: e.rel })
+      }
+    }
+    const moved: ChangeEntry[] = []
+    for (const e of lote.entries) {
+      const twin = e.sha256 ? byHash.get(e.sha256) : undefined
+      if (!twin) continue
+      e.groupId = twin.groupId
+      e.identity = e.identity ?? `copia exacta de ${twin.rel}`
+      buckets.get(twin.groupId)!.entries.push(e)
+      moved.push(e)
+    }
+    lote.entries = lote.entries.filter((e) => !moved.includes(e))
+    if (!lote.entries.length) buckets.delete('lote')
+  }
+
   const groups: FileGroup[] = [...buckets.entries()].map(([id, b]) => ({
     id,
     name: b.name,
