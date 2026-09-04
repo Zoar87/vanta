@@ -391,6 +391,22 @@ for (const f of ['library_600x900.jpg', 'library_hero.jpg', 'logo.png', 'icon.jp
 await writeFile(path.join(STEAM, 'appcache/librarycache/730_header.jpg'), Buffer.alloc(300, 2))
 const a = await resolveArt({ id: 'steam:214490', name: 'Alien', path: G, platform: 'steam', appId: '214490', linkedPaths: [], addedAt: '' }, DATA)
 ok('Steam nuevo: carátula, fondo, logotipo e icono', a?.cover && a?.hero && a?.logo && a?.icon && a.source === 'caché de Steam')
+// Steam nuevo con nombres sin significado: hay que reconocerlo por proporciones.
+await mkdir(path.join(STEAM, 'appcache/librarycache/999'), { recursive: true })
+const jpeg = (w, h) => Buffer.concat([
+  Buffer.from('ffd8', 'hex'),
+  Buffer.from('ffe000104a46494600010100000100010000', 'hex'),
+  Buffer.from('ffc00011', 'hex'), Buffer.from([8]),
+  Buffer.from([h >> 8, h & 255, w >> 8, w & 255]), Buffer.from([3]), Buffer.alloc(9),
+  Buffer.from('ffd9', 'hex')
+])
+await writeFile(path.join(STEAM, 'appcache/librarycache/999/a1b2c3.jpg'), jpeg(600, 900))
+await writeFile(path.join(STEAM, 'appcache/librarycache/999/d4e5f6.jpg'), jpeg(1920, 620))
+await writeFile(path.join(STEAM, 'appcache/librarycache/999/f1e2d3.jpg'), jpeg(32, 32))
+const sinNombre = await resolveArt({ id: 'steam:999', name: 'Nuevo', path: G, platform: 'steam', appId: '999', linkedPaths: [], addedAt: '' }, DATA)
+ok('reconoce el arte de Steam aunque los nombres no digan nada',
+   sinNombre?.source === 'caché de Steam' && !!sinNombre.cover && !!sinNombre.hero && !!sinNombre.icon)
+
 const b = await resolveArt({ id: 'steam:730', name: 'Otro', path: G, platform: 'steam', appId: '730', linkedPaths: [], addedAt: '' }, DATA)
 ok('Steam antiguo: cabecera plana', b?.hero === 'steam_730-hero.jpg')
 const gogDir = path.join(TMP, 'GOG')
@@ -400,7 +416,7 @@ const c = await resolveArt({ id: 'gog:1', name: 'G', path: gogDir, platform: 'go
 ok('GOG: su .ico', c?.source === 'icono de la carpeta del juego')
 const d = await resolveArt({ id: 'manual:x', name: 'Manual', path: G, platform: 'manual', linkedPaths: [], addedAt: '', spec }, DATA)
 ok('sin Steam ni GOG: icono extraído del ejecutable', d?.source === 'icono del ejecutable' && d.icon?.endsWith('.ico'))
-ok('archivos copiados a la carpeta de arte', (await readdir(path.join(DATA, 'art'))).length >= 7)
+ok('archivos copiados a la carpeta de arte', (await readdir(path.join(DATA, 'art'))).length >= 10)
 
 // ---------------------------------------------------------------- final
 

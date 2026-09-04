@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react'
 import type { ChangeReport, Game } from '../../shared/types'
 import { useStore, count } from '../store'
-import Art, { artUrl, logoUrl } from './Art'
+import Art, { artOf } from './Art'
 import Progress from './Progress'
 import Summary from './Summary'
 import ChangesView from './ChangesView'
@@ -32,6 +32,7 @@ interface RemovePreview {
 interface BaselinePreview {
   mounted: { id: string; name: string }[]
   unmounted: { id: string; name: string }[]
+  purgeable?: { id: string; name: string; counts: { nuevo: number } }[]
 }
 
 export default function GameView({ game }: { game: Game }) {
@@ -58,11 +59,21 @@ export default function GameView({ game }: { game: Game }) {
 
   const reloadReport = async () => setReport(await window.vanta.loadChanges(game.id))
 
-  /** Fija la línea base. Si hay perfiles montados, primero pregunta. */
+  /**
+   * Fija la línea base. Antes avisa de lo que quedaría congelado como
+   * "original": los perfiles montados y, sobre todo, los cambios que aún
+   * están sin resolver en la última revisión.
+   */
   const askBaseline = async () => {
     const preview = await window.vanta.baselinePreview(game.id)
-    if (preview.mounted.length) setBaselineAsk(preview)
-    else runBaseline()
+    const purgeable = report
+      ? report.groups.filter((g) => !g.locked && g.counts.nuevo > 0)
+      : []
+    if (preview.mounted.length || purgeable.length) {
+      setBaselineAsk({ ...preview, purgeable })
+    } else {
+      runBaseline()
+    }
   }
 
   const runBaseline = async (unmountFirst: string[] = []) => {
@@ -94,8 +105,10 @@ export default function GameView({ game }: { game: Game }) {
   }
 
   const pending = report?.entries.length ?? 0
-  const hero = artUrl(game.art?.hero) ?? artUrl(game.art?.cover)
-  const logo = logoUrl(game)
+  const art = artOf(game)
+  // Un icono no sirve de fondo: se ve pixelado al ampliarlo.
+  const hero = art.hero ?? (art.onlyIcon ? null : art.cover)
+  const logo = art.logo
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'resumen', label: 'Resumen' },
@@ -207,26 +220,55 @@ export default function GameView({ game }: { game: Game }) {
         <div className="overlay" onClick={() => setBaselineAsk(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <header>
-              <h2>Tienes perfiles montados</h2>
+              <h2>Esto congelará lo que hay puesto</h2>
             </header>
             <div className="scroll" style={{ padding: '12px 20px' }}>
               <p style={{ marginTop: 0 }}>
-                {baselineAsk.mounted.map((p) => p.name).join(', ')}{' '}
-                {baselineAsk.mounted.length === 1 ? 'está montado' : 'están montados'}. Si rehaces
-                la línea base ahora, sus archivos pasarán a contar como originales del juego y VANTA
-                dejará de verlos como algo añadido.
+                La línea base es la foto de cómo es el juego «de fábrica». Todo lo que esté en la
+                carpeta al rehacerla pasa a contar como original, y VANTA dejará de ofrecerte
+                quitarlo.
               </p>
-              <p>Lo normal es desmontarlos antes, fijar la línea base con el juego limpio y volver a montarlos.</p>
+
+              {baselineAsk.purgeable && baselineAsk.purgeable.length > 0 && (
+                <>
+                  <p>Ahora mismo quedarían congelados:</p>
+                  <ul className="evidence">
+                    {baselineAsk.purgeable.map((g) => (
+                      <li key={g.id}>
+                        {g.name} · {count(g.counts.nuevo)} archivos
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {baselineAsk.mounted.length > 0 && (
+                <p>
+                  Además, {baselineAsk.mounted.map((p) => p.name).join(', ')}{' '}
+                  {baselineAsk.mounted.length === 1 ? 'está montado' : 'están montados'}.
+                </p>
+              )}
+
+              <p>
+                Rehacer la línea base tiene sentido cuando el juego se ha actualizado, o cuando
+                quieres tomar como punto de partida el estado actual a propósito. Si lo que querías
+                era ver qué ha cambiado, usa «Buscar cambios».
+              </p>
             </div>
             <footer>
-              <button className="btn quiet" onClick={() => setBaselineAsk(null)}>
+              <button className="btn primary" onClick={() => setBaselineAsk(null)}>
                 Cancelar
               </button>
-              <button className="btn quiet" onClick={() => runBaseline()}>
-                Continuar así
-              </button>
-              <button className="btn primary" onClick={() => runBaseline(baselineAsk.mounted.map((p) => p.id))}>
-                Desmontar y continuar
+              {baselineAsk.mounted.length > 0 && (
+                <button
+                  className="btn quiet"
+                  onClick={() => runBaseline(baselineAsk.mounted.map((p) => p.id))}
+                >
+                  Desmontar los perfiles y rehacerla
+                </button>
+              )}
+              <button className="btn quiet danger" onClick={() => runBaseline()}>
+                Rehacerla con todo lo que hay
               </button>
             </footer>
           </div>

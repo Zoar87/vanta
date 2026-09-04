@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ChangeReport, Game, GameHistory, Profile, QuarantineBatch } from '../../shared/types'
-import { artUrl } from './Art'
+import { artOf } from './Art'
 import { bytes, count, dateTime } from '../store'
 
 interface Props {
@@ -41,7 +41,8 @@ export default function SidePanel({ game, report, busy, onScanChanges, onGoTo }:
     })
   }, [game.id, report?.takenAt, report?.entries.length])
 
-  const cover = artUrl(game.art?.cover) ?? artUrl(game.art?.icon)
+  const art = artOf(game)
+  const cover = art.cover ?? art.icon
   const mounted = profiles.filter((p) => p.mounted)
   const active = batches.filter((b) => !b.restored)
   const recent = [
@@ -60,7 +61,12 @@ export default function SidePanel({ game, report, busy, onScanChanges, onGoTo }:
   return (
     <aside className="side">
       {cover ? (
-        <img className="cover" src={cover} alt="" draggable={false} />
+        <img
+          className={`cover${art.onlyIcon ? ' icon-only' : ''}`}
+          src={cover}
+          alt=""
+          draggable={false}
+        />
       ) : (
         <div className="cover fallback" aria-hidden>
           {initials(game.name)}

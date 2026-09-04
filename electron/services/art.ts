@@ -13,7 +13,7 @@
  * que Steam mantenga su caché ni volver a leer el ejecutable en cada arranque.
  */
 
-import { readdir, copyFile, mkdir, writeFile, stat } from 'node:fs/promises'
+import { readdir, copyFile, mkdir, writeFile, stat, open } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import type { Game, GameArt } from '../../shared/types'
@@ -24,6 +24,85 @@ const safe = (s: string): string => s.replace(/[^a-z0-9._-]/gi, '_')
 export const artDir = (dataDir: string): string => path.join(dataDir, 'art')
 
 const IMAGE = /\.(jpg|jpeg|png|ico)$/i
+
+interface ImageInfo {
+  width: number
+  height: number
+  alpha: boolean
+}
+
+/**
+ * Mide una imagen leyendo solo su cabecera, sin descodificarla.
+ *
+ * Hace falta porque Steam ha ido cambiando cómo nombra los archivos de su
+ * caché: en las entradas nuevas ya no se llaman library_600x900.jpg sino con
+ * un identificador sin sentido. Por el nombre no hay nada que rascar, pero las
+ * proporciones no mienten: lo alto es la carátula, lo muy ancho la cabecera, y
+ * lo cuadrado y pequeño el icono.
+ */
+async function imageInfo(file: string): Promise<ImageInfo | null> {
+  let fh
+  try {
+    fh = await open(file, 'r')
+    const head = Buffer.alloc(65536)
+    const { bytesRead } = await fh.read(head, 0, head.length, 0)
+    const buf = head.subarray(0, bytesRead)
+
+    // PNG: la cabecera IHDR está siempre en la misma posición.
+    if (buf.length > 26 && buf.readUInt32BE(0) === 0x89504e47) {
+      const colorType = buf[25]
+      return {
+        width: buf.readUInt32BE(16),
+        height: buf.readUInt32BE(20),
+        alpha: colorType === 4 || colorType === 6 || colorType === 3
+      }
+    }
+
+    // JPEG: hay que recorrer los segmentos hasta dar con el de inicio de marco.
+    if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+      let i = 2
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xff) {
+          i++
+          continue
+        }
+        const marker = buf[i + 1]
+        if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+          i += 2
+          continue
+        }
+        const length = buf.readUInt16BE(i + 2)
+        const isFrame =
+          (marker >= 0xc0 && marker <= 0xc3) ||
+          (marker >= 0xc5 && marker <= 0xc7) ||
+          (marker >= 0xc9 && marker <= 0xcb) ||
+          (marker >= 0xcd && marker <= 0xcf)
+        if (isFrame) {
+          return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7), alpha: false }
+        }
+        i += 2 + length
+      }
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    await fh?.close().catch(() => {})
+  }
+}
+
+/** Clasifica una imagen por sus proporciones cuando el nombre no dice nada. */
+function shapeOf(info: ImageInfo, isPng: boolean): 'cover' | 'hero' | 'logo' | 'icon' | null {
+  const { width: w, height: h } = info
+  if (!w || !h) return null
+  const ratio = w / h
+  if (ratio < 0.85) return 'cover' // vertical: 600x900 y parecidos
+  if (w <= 320 && ratio > 0.85 && ratio < 1.2) return 'icon' // cuadrada y pequeña
+  if (ratio >= 1.9) return 'hero' // muy apaisada: cabecera o fondo
+  if (isPng && info.alpha) return 'logo' // el logotipo va recortado sobre transparencia
+  if (ratio >= 1.2) return 'hero'
+  return null
+}
 
 /** Puntúa un nombre de archivo de la caché de Steam según lo que buscamos. */
 function score(name: string, want: 'cover' | 'hero' | 'icon' | 'logo'): number {
@@ -108,10 +187,33 @@ export async function resolveArt(game: Game, dataDir: string): Promise<GameArt |
   if (game.platform === 'steam' && game.appId) {
     const files = await steamCacheFiles(game.appId)
     if (files.length) {
-      const cover = best(files, 'cover')
-      const hero = best(files, 'hero')
-      const icon = best(files, 'icon')
-      const logo = best(files, 'logo')
+      let cover = best(files, 'cover')
+      let hero = best(files, 'hero')
+      let icon = best(files, 'icon')
+      let logo = best(files, 'logo')
+
+      // Lo que no se haya podido identificar por el nombre, se mide.
+      const missing = !cover || !hero || !icon || !logo
+      if (missing) {
+        const named = new Set([cover, hero, icon, logo].filter(Boolean) as string[])
+        const measured: { file: string; shape: string; area: number }[] = []
+        for (const file of files) {
+          if (named.has(file)) continue
+          const info = await imageInfo(file)
+          if (!info) continue
+          const shape = shapeOf(info, /\.png$/i.test(file))
+          if (shape) measured.push({ file, shape, area: info.width * info.height })
+        }
+        // Ante varias candidatas de la misma forma, gana la de más resolución.
+        const pick = (shape: string): string | null =>
+          measured
+            .filter((m) => m.shape === shape)
+            .sort((a, b) => b.area - a.area)[0]?.file ?? null
+        cover = cover ?? pick('cover')
+        hero = hero ?? pick('hero')
+        icon = icon ?? pick('icon')
+        logo = logo ?? pick('logo')
+      }
       if (cover && (await copyInto(path.join(dir, `${id}-cover${path.extname(cover)}`), cover))) {
         art.cover = `${id}-cover${path.extname(cover)}`
       }

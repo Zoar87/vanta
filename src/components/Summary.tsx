@@ -82,11 +82,25 @@ export default function Summary({
     else if (res?.error) onNotice(res.error)
   }
 
+  const [artNote, setArtNote] = useState<string | null>(null)
+
   const refreshArt = async () => {
     setArtBusy(true)
-    await window.vanta.refreshArt(game.id)
+    setArtNote(null)
+    const art = await window.vanta.refreshArt(game.id)
     setGames(await window.vanta.listGames())
     setArtBusy(false)
+    if (!art || art.source === 'ninguna') {
+      setArtNote('No he encontrado nada. Steam no tiene arte de este juego en su caché local.')
+      return
+    }
+    const piezas = [
+      art.cover && 'carátula',
+      art.hero && 'fondo',
+      art.logo && 'logotipo',
+      art.icon && 'icono'
+    ].filter(Boolean)
+    setArtNote(`${art.source}: ${piezas.join(', ')}.`)
   }
 
   const spec = game.spec
@@ -181,6 +195,11 @@ export default function Summary({
               >
                 {artBusy ? 'Buscando…' : 'Volver a buscarla'}
               </button>
+              {artNote && (
+                <div className="note" style={{ marginTop: 4 }}>
+                  {artNote}
+                </div>
+              )}
             </dd>
 
             {game.registryKey && (

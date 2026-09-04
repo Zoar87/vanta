@@ -6,12 +6,28 @@
 import { useState } from 'react'
 import type { Game } from '../../shared/types'
 
-export const artUrl = (name?: string): string | null =>
-  name ? `vanta://art/${encodeURIComponent(name)}` : null
+/**
+ * El nombre del archivo no cambia al volver a buscar la carátula, así que se
+ * le añade la marca de tiempo: sin ella el navegador seguiría enseñando la
+ * imagen vieja de su caché.
+ */
+export const artUrl = (name?: string, version?: string): string | null =>
+  name
+    ? `vanta://art/${encodeURIComponent(name)}${version ? `?v=${encodeURIComponent(version)}` : ''}`
+    : null
 
-/** Logotipo recortado del juego, cuando Steam lo tiene cacheado. */
-export const logoUrl = (game: { art?: { logo?: string } }): string | null =>
-  artUrl(game.art?.logo)
+/** Las cuatro piezas de arte de un juego, ya con su versión. */
+export function artOf(game: { art?: { cover?: string; hero?: string; logo?: string; icon?: string; resolvedAt?: string } }) {
+  const v = game.art?.resolvedAt
+  return {
+    cover: artUrl(game.art?.cover, v),
+    hero: artUrl(game.art?.hero, v),
+    logo: artUrl(game.art?.logo, v),
+    icon: artUrl(game.art?.icon, v),
+    /** Sin carátula real, solo hay un icono: no se puede estirar sin que se vea mal. */
+    onlyIcon: !game.art?.cover && !!game.art?.icon
+  }
+}
 
 /** Iniciales del juego, para cuando no hay carátula ni icono. */
 function initials(name: string): string {
@@ -36,7 +52,8 @@ function tint(name: string): string {
 
 export default function Art({ game, size }: { game: Game; size: 'rail' | 'head' }) {
   const [broken, setBroken] = useState(false)
-  const src = artUrl(game.art?.cover) ?? artUrl(game.art?.icon)
+  const a = artOf(game)
+  const src = a.cover ?? a.icon
   if (src && !broken) {
     return (
       <img

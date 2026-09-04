@@ -1171,3 +1171,12 @@ table.files.diff td.arrow {
   margin: 0;
   padding: 0;
 }
+
+/* Un icono de 256 px no da para carátula: se muestra a su tamaño, centrado. */
+.side .cover.icon-only {
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  padding: 22px;
+  background: var(--panel);
+}
