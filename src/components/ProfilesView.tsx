@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import type { Game, Profile } from '../../shared/types'
 import { bytes, count, dateTime } from '../store'
+import SystemPanel from './SystemPanel'
 
 interface Props {
   game: Game
@@ -271,6 +272,8 @@ export default function ProfilesView({ game, busy, onBusy, onNotice, onChanged }
           </div>
         </div>
       )}
+
+      <SystemPanel game={game} onNotice={onNotice} />
 
       {editing && (
         <EditProfile

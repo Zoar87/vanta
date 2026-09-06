@@ -365,3 +365,51 @@ export interface FileReport {
   preview?: string
   isText: boolean
 }
+
+/** Un cambio detectado por el vigilante temporal. */
+export interface WatchChange {
+  rel: string
+  root: number
+  kind: 'apareció' | 'cambió' | 'desapareció'
+  size: number
+  mtimeMs: number
+}
+
+export interface WatchResult {
+  startedAt: string
+  endedAt: string
+  seconds: number
+  changes: WatchChange[]
+}
+
+export interface WatchState {
+  watching: boolean
+  startedAt?: string
+  fileCount?: number
+}
+
+export interface KnownApp {
+  label: string
+  category: 'navegador' | 'comunicacion' | 'captura' | 'periféricos' | 'nube' | 'tienda' | 'sistema'
+  why: string
+  injects: boolean
+  closeable: boolean
+}
+
+export interface RunningApp {
+  pid: number
+  name: string
+  label: string
+  company?: string
+  memoryBytes: number
+  cpuPercent: number
+  hasWindow: boolean
+  path?: string
+  known?: KnownApp
+}
+
+export interface InjectedModule {
+  file: string
+  name: string
+  origin: 'juego' | 'windows' | 'ajeno'
+}

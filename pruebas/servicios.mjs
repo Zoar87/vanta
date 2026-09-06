@@ -37,7 +37,7 @@ await mkdir(OUT, { recursive: true })
 const services = [
   'scan', 'diff', 'classify', 'quarantine', 'originals', 'profiles', 'vortex',
   'report', 'config', 'configStore', 'registry', 'art', 'pe', 'detect', 'spec',
-  'timeline', 'inspect', 'hashWorker'
+  'timeline', 'inspect', 'watch', 'processes', 'hashWorker'
 ]
 await build({
   entryPoints: services.map((s) => path.join(ROOT, 'electron', 'services', `${s}.ts`)),
@@ -75,6 +75,8 @@ const { parseVdf } = await load('detect')
 const { buildSpec } = await load('spec')
 const { clusterByTime } = await load('timeline')
 const { crossReference, inspectFile } = await load('inspect')
+const { startWatch, stopWatch } = await load('watch')
+const { isUntouchable, listRunning, closeApp } = await load('processes')
 
 const WORKER = path.join(OUT, 'hashWorker.js')
 const DATA = path.join(TMP, 'datos')
@@ -443,6 +445,29 @@ const fichaNo = await inspectFile([G], 0, 'no-existe.dll', report)
 ok('un archivo que no está no rompe nada', fichaNo.exists === false)
 const fichaPak = await inspectFile([G], 0, 'Data/armas.pak', report)
 ok('un binario que no es PE no se enseña como texto', !fichaPak.isText && !fichaPak.pe)
+
+title('Vigilante')
+const vig = await startWatch('j', [G])
+ok(`la foto anota la carpeta entera (${vig.files.size})`, vig.files.size > 20)
+await mkdir(path.join(G, '_sospechoso_'), { recursive: true })
+await writeFile(path.join(G, '_sospechoso_/copia.dll'), Buffer.alloc(700, 4))
+await writeFile(path.join(G, 'ReShade.ini'), '[GENERAL]\nCambiado=1\n')
+const vigR = await stopWatch(vig)
+ok('pilla lo que ha aparecido', vigR.changes.some((c) => c.kind === 'apareció' && c.rel === '_sospechoso_/copia.dll'))
+ok('y lo que ha cambiado', vigR.changes.some((c) => c.kind === 'cambió' && c.rel === 'ReShade.ini'))
+ok('no señala lo que nadie tocó', !vigR.changes.some((c) => c.rel.includes('pakchunk0')))
+const vig2 = await startWatch('j', [G])
+ok('sin actividad, ni un cambio', (await stopWatch(vig2)).changes.length === 0)
+await rm(path.join(G, '_sospechoso_'), { recursive: true, force: true })
+
+title('Qué más está corriendo')
+for (const proc of ['svchost', 'lsass', 'dwm.exe', 'EasyAntiCheat', 'BEService', 'csrss', 'MsMpEng'])
+  ok(`nunca se propone cerrar ${proc}`, isUntouchable(proc))
+for (const proc of ['chrome', 'discord', 'obs64', 'iCUE', 'Dropbox'])
+  ok(`sí se puede proponer cerrar ${proc}`, !isUntouchable(proc))
+ok('el motor rechaza cerrar un proceso del sistema aunque se lo pidan',
+   (await closeApp(4, 'svchost')).ok === false)
+ok('fuera de Windows devuelve lista vacía en vez de fallar', (await listRunning(10)).length === 0)
 
 title('Carátulas')
 const STEAM = path.join(TMP, 'Steam')

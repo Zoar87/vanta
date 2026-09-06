@@ -10,7 +10,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   Category, ChangeReport, Conflict, ConfigVersion, FileReport, Game, GameHistory, LinkedPath,
-  SharedFile, TimeCluster, UpdateAlert,
+  RunningApp, SharedFile, TimeCluster, UpdateAlert, WatchState,
   Profile, QuarantineBatch, LearnedRule, ScanProgress
 } from '../shared/types'
 
@@ -28,6 +28,12 @@ const api = {
   usage: () => ipcRenderer.invoke('app:usage'),
   openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
   timeline: (id: string): Promise<TimeCluster[]> => ipcRenderer.invoke('changes:timeline', id),
+  running: (): Promise<RunningApp[]> => ipcRenderer.invoke('system:running'),
+  closeApp: (pid: number, name: string) => ipcRenderer.invoke('system:close', pid, name),
+  insideGame: (id: string) => ipcRenderer.invoke('system:inside', id),
+  watchState: (id: string): Promise<WatchState> => ipcRenderer.invoke('watch:state', id),
+  watchStart: (id: string) => ipcRenderer.invoke('watch:start', id),
+  watchStop: (id: string) => ipcRenderer.invoke('watch:stop', id),
   pendingUpdates: (): Promise<UpdateAlert[]> => ipcRenderer.invoke('library:updates'),
   sharedFiles: (): Promise<SharedFile[]> => ipcRenderer.invoke('library:shared'),
   inspectFile: (id: string, root: number, rel: string): Promise<FileReport | null> =>

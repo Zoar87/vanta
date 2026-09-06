@@ -13,6 +13,7 @@ import { CATEGORY, CATEGORY_ORDER } from '../categories'
 import { bytes, count, dateTime, duration } from '../store'
 import ConfigDiffView from './ConfigDiffView'
 import FileInspector from './FileInspector'
+import WatchPanel from './WatchPanel'
 import type { TimeCluster } from '../../shared/types'
 
 interface Props {
@@ -222,7 +223,10 @@ export default function ChangesView({ game, busy, report, onReport, onBusy, onNo
           )}
 
           {vista === 'momentos' && (
-            <Momentos clusters={momentos} />
+            <>
+              <Momentos clusters={momentos} />
+              <WatchPanel game={game} onInspect={setInspeccionar} />
+            </>
           )}
 
           {vista === 'grupos' && report.entries.length > 0 && (

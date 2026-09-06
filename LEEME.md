@@ -223,6 +223,42 @@ Sirve para responder a «¿y esto de dónde ha salido?». Lo que aparece junto v
 junto, así que una lista de cien archivos sueltos se convierte en tres momentos:
 a tal hora instalaste esto, a tal otra esto.
 
+## Qué más está corriendo
+
+En la pestaña de perfiles, junto al botón de jugar, VANTA puede mirar qué hay
+abierto que le quite fotogramas al juego.
+
+No ordena por memoria, porque engaña: la RAM de un programa parado casi no le
+quita nada al juego, Windows se la cede cuando hace falta. Lo que se pone
+primero es lo que de verdad duele:
+
+- **Lo que se mete dentro del juego**: superposiciones de Discord o de la barra
+  de Xbox, capturas como OBS o RivaTuner, programas de luces como iCUE o
+  Armoury Crate. Enganchan la tubería gráfica y cuestan fotogramas aunque en el
+  administrador de tareas parezcan inofensivos.
+- **Lo que compite por la CPU**, medido de verdad con dos muestras separadas en
+  el tiempo, no con la memoria como excusa.
+
+Con el juego abierto también enseña **qué librerías hay cargadas dentro de su
+proceso** que no vengan ni del juego ni de Windows. Es lo mismo que hace VANTA
+con los archivos, pero en memoria. Si el juego lleva anticheat o va como
+administrador, no dejará mirar, y se dice en vez de callarlo.
+
+«Cerrar» le pide la ventana al programa, igual que darle a la equis: si tiene
+algo sin guardar, te lo preguntará. VANTA nunca mata un proceso, y jamás
+propone tocar nada de Windows, del controlador gráfico ni de un anticheat.
+
+## Vigilante
+
+En la vista «por cuándo apareció» hay un vigilante para pillar in fraganti a lo
+que crea archivos sin permiso. Le das a empezar, va y hace lo que quieras
+observar (arrancar el juego, pasar un instalador), vuelves y paras. Te dice
+exactamente qué apareció, qué cambió y qué desapareció en ese rato.
+
+No calcula huellas: solo rutas, tamaños y fechas, así que empezar y parar es
+cuestión de milisegundos. Y es de usar y tirar: no queda ningún proceso
+vigilando por detrás cuando no se lo has pedido, ni sobrevive a cerrar VANTA.
+
 ## Aviso cuando la tienda actualiza un juego
 
 Al abrir, VANTA compara la compilación que Steam tiene ahora de cada juego con

@@ -93,6 +93,8 @@ import {
 import { checkForUpdates, installUpdate, currentUpdateState, onUpdateState } from './services/updater'
 import { clusterByTime } from './services/timeline'
 import { crossReference, inspectFile } from './services/inspect'
+import { startWatch, stopWatch, type Watched } from './services/watch'
+import { listRunning, modulesOf, findGameProcess, closeApp } from './services/processes'
 
 // =============================================================================
 // 1. Arranque y ventana
@@ -1173,6 +1175,62 @@ ipcMain.handle('app:openDataDir', async () => {
 // =============================================================================
 // 8b. Línea de tiempo, cruce entre juegos, ficha de archivo y notas
 // =============================================================================
+
+// --- qué más está corriendo ---
+
+ipcMain.handle('system:running', async () => listRunning())
+
+ipcMain.handle('system:close', async (_e, pid: number, name: string) => closeApp(pid, name))
+
+/** Qué se ha metido dentro del proceso del juego, si está abierto. */
+ipcMain.handle('system:inside', async (_e, id: string) => {
+  const game = gameById(id)
+  const exe = game?.spec?.mainExecutable
+  if (!game || !exe) return { running: false, reason: 'Fija la línea base para saber cuál es el ejecutable.' }
+  const pid = await findGameProcess(exe)
+  if (!pid) return { running: false }
+  const modules = await modulesOf(pid, game.path)
+  if (!modules) {
+    return {
+      running: true,
+      pid,
+      blocked: true,
+      reason:
+        'El juego está abierto pero no deja mirar dentro. Es normal si lleva anticheat o si se ejecuta con permisos de administrador.'
+    }
+  }
+  return { running: true, pid, modules: modules.filter((m) => m.origin === 'ajeno') }
+})
+
+// --- vigilante temporal ---
+//
+// No hay proceso residente: la foto se guarda en memoria y solo mientras tú lo
+// pidas. Si cierras VANTA se pierde, que es lo esperable de algo de usar y tirar.
+const watchers = new Map<string, Watched>()
+
+ipcMain.handle('watch:state', (_e, id: string) => {
+  const w = watchers.get(id)
+  return w
+    ? { watching: true, startedAt: w.startedAt, fileCount: w.files.size }
+    : { watching: false }
+})
+
+ipcMain.handle('watch:start', async (_e, id: string) => {
+  const game = gameById(id)
+  if (!game) return { ok: false, error: 'Juego no encontrado.' }
+  const roots = rootsOf(game).filter((r) => existsSync(r))
+  if (!roots.length) return { ok: false, error: 'No hay ninguna carpeta que vigilar.' }
+  const w = await startWatch(id, roots)
+  watchers.set(id, w)
+  return { ok: true, startedAt: w.startedAt, fileCount: w.files.size }
+})
+
+ipcMain.handle('watch:stop', async (_e, id: string) => {
+  const w = watchers.get(id)
+  if (!w) return { ok: false, error: 'No había ninguna vigilancia en marcha.' }
+  watchers.delete(id)
+  return { ok: true, result: await stopWatch(w) }
+})
 
 /** Agrupa lo aparecido por el momento en que se creó cada archivo. */
 ipcMain.handle('changes:timeline', async (_e, id: string) => {
